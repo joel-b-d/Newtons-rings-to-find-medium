@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { RefreshCw, Circle, Calculator } from 'lucide-react';
+import { RefreshCw, Circle } from 'lucide-react';
 
 export default function NewtonsRingsRefractiveIndex() {
   const [radiusOfCurvature, setRadiusOfCurvature] = useState(50);
@@ -157,13 +157,11 @@ export default function NewtonsRingsRefractiveIndex() {
     const dAirB = parseFloat(calc[order].air.reading_b.diameter);
 
     let muAcetone = null;
-    let muAir = null;
 
     if (dAcetoneA && dAcetoneB && dAirA && dAirB) {
       const meanDSqAcetone = (Math.pow(dAcetoneA, 2) + Math.pow(dAcetoneB, 2)) / 2;
       const meanDSqAir = (Math.pow(dAirA, 2) + Math.pow(dAirB, 2)) / 2;
       muAcetone = (meanDSqAir / meanDSqAcetone).toFixed(5);
-      muAir = (meanDSqAir / meanDSqAcetone).toFixed(5);
     }
 
     return (
