@@ -4,7 +4,7 @@ import { RefreshCw, Circle } from 'lucide-react';
 export default function NewtonsRingsRefractiveIndex() {
   const [radiusOfCurvature, setRadiusOfCurvature] = useState(50);
   const LEAST_COUNT = 0.005;
-  
+   
   const wavelengthOptions = {
     sodium: { name: 'Sodium (Na)', value: 5893, color: 'Yellow' },
     neon: { name: 'Neon (Ne)', value: 6402, color: 'Red-Orange' },
@@ -12,9 +12,9 @@ export default function NewtonsRingsRefractiveIndex() {
     mercury: { name: 'Mercury (Hg)', value: 5461, color: 'Green' },
     hydrogen: { name: 'Hydrogen (H)', value: 6563, color: 'Red' }
   };
-  
+   
   const [selectedWavelength, setSelectedWavelength] = useState('sodium');
-  
+   
   const [readings, setReadings] = useState({
     order2: {
       acetone: {
@@ -41,36 +41,39 @@ export default function NewtonsRingsRefractiveIndex() {
   const generateRandomReadings = () => {
     const now = new Date();
     const seed = (now.getSeconds() * 1000) + (now.getMinutes() * 100) + now.getDate();
-    
+     
     const random = (offset) => {
       const x = Math.sin(seed + offset) * 10000;
       return x - Math.floor(x);
     };
-    
+     
     const generateReading = (medium, order, position, offset) => {
       let baseDiameter;
       if (medium === 'acetone') {
         baseDiameter = order === 2 ? 0.400 : 0.580; 
       } else {
-        baseDiameter = order === 2 ? 0.465 : 0.675; 
+        // Adjusted base diameters to target Refractive Index approx 1.38xx
+        // sqrt(1.385) * 0.400 ≈ 0.4707
+        // sqrt(1.385) * 0.580 ≈ 0.6825
+        baseDiameter = order === 2 ? 0.4707 : 0.6825; 
       }
-      
+       
       const variation = (random(offset) - 0.5) * 0.015;
       const diameter = baseDiameter + variation;
       const center = 10.0 + (random(offset + 50) * 2); 
       const leftTotal = center + (diameter / 2);
       const rightTotal = center - (diameter / 2);
-      
+       
       const generateMSRVSR = (total) => {
         const msr = Math.floor(total * 10) / 10;
         const remainder = total - msr;
         const vsr = Math.round(remainder / LEAST_COUNT);
         return { msr: parseFloat(msr.toFixed(3)), vsr };
       };
-      
+       
       const left = generateMSRVSR(leftTotal);
       const right = generateMSRVSR(rightTotal);
-      
+       
       return {
         left_msr: left.msr,
         left_vsr: left.vsr,
@@ -78,7 +81,7 @@ export default function NewtonsRingsRefractiveIndex() {
         right_vsr: right.vsr
       };
     };
-    
+     
     let offset = 0;
     setReadings({
       order2: {
@@ -178,7 +181,7 @@ export default function NewtonsRingsRefractiveIndex() {
           </div>
           <div className="text-3xl font-black opacity-20">n={label}</div>
         </div>
-        
+         
         <div className="overflow-x-auto">
           <table className="w-full text-sm border-collapse">
             <thead className="bg-gradient-to-b from-gray-100 to-gray-50 text-gray-700">
@@ -192,11 +195,11 @@ export default function NewtonsRingsRefractiveIndex() {
                 <th className="border-2 border-gray-300 p-2 bg-blue-50">MSR</th>
                 <th className="border-2 border-gray-300 p-2 bg-blue-50">VSR</th>
                 <th className="border-2 border-gray-300 p-2 bg-blue-100 font-bold">Total</th>
-                <th className="border-2 border-gray-300 p-2 bg-yellow-100 font-bold">D²</th>
+                <th className="border-2 border-gray-300 p-2 bg-yellow-100 font-bold">Dn²</th>
                 <th className="border-2 border-gray-300 p-2 bg-purple-50">MSR</th>
                 <th className="border-2 border-gray-300 p-2 bg-purple-50">VSR</th>
                 <th className="border-2 border-gray-300 p-2 bg-purple-100 font-bold">Total</th>
-                <th className="border-2 border-gray-300 p-2 bg-yellow-100 font-bold">D²</th>
+                <th className="border-2 border-gray-300 p-2 bg-yellow-100 font-bold">Dn²</th>
               </tr>
             </thead>
             <tbody>
@@ -205,7 +208,7 @@ export default function NewtonsRingsRefractiveIndex() {
                   (Math.pow(parseFloat(calc[order][med].reading_a.diameter), 2)).toFixed(6) : '—';
                 const dSquaredB = calc[order][med].reading_b.diameter ? 
                   (Math.pow(parseFloat(calc[order][med].reading_b.diameter), 2)).toFixed(6) : '—';
-                
+                 
                 return (
                   <tr key={med} className="hover:bg-gray-50 transition-colors">
                     <td className={`border-2 border-gray-300 p-3 text-center font-bold uppercase text-sm ${
@@ -276,7 +279,7 @@ export default function NewtonsRingsRefractiveIndex() {
                 </p>
               </div>
             </div>
-            
+             
             <button 
               onClick={generateRandomReadings} 
               className="flex gap-3 items-center bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white px-8 py-4 rounded-xl font-bold shadow-lg hover:shadow-xl transition-all active:scale-95 border-2 border-indigo-700"
