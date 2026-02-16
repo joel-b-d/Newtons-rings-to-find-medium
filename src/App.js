@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { RefreshCw, Circle, Calculator } from 'lucide-react';
+import { RefreshCw, Circle } from 'lucide-react';
 
 export default function NewtonsRingsRefractiveIndex() {
   const [radiusOfCurvature, setRadiusOfCurvature] = useState(50);
