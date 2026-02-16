@@ -7,27 +7,6 @@ export default function NewtonsRingsRefractiveIndex() {
   const [radius, setRadius] = useState(50);
   const [leastCount, setLeastCount] = useState(0.001);
   const [readings, setReadings] = useState(null);
-  const [deviceType, setDeviceType] = useState('Desktop');
-
-  // Device Detection
-  useEffect(() => {
-    const detectDevice = () => {
-      const userAgent = navigator.userAgent.toLowerCase();
-      const isMobile = /iphone|ipad|ipod|android/.test(userAgent);
-      const isTablet = /(ipad|tablet|(android(?!.*mobile))|(windows(?!.*phone)(.*touch))|kindle|playbook|silk|(puffin(?!.*(IP|AP|WP))))/.test(userAgent);
-
-      if (isMobile && !isTablet) {
-        if (/iphone|ipad|ipod/.test(userAgent)) {
-          setDeviceType('iOS');
-        } else {
-          setDeviceType('Android');
-        }
-      } else {
-        setDeviceType('Desktop');
-      }
-    };
-    detectDevice();
-  }, []);
 
   // --- MATH HELPERS ---
   
@@ -135,6 +114,7 @@ export default function NewtonsRingsRefractiveIndex() {
   // Initial Generation
   useEffect(() => {
     generateReadings();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [leastCount]); 
 
   // Calculate Final Average Mu (5 decimals)
@@ -276,35 +256,40 @@ export default function NewtonsRingsRefractiveIndex() {
             </>
         )}
 
-        {/* RESULT CARD - MOVED BELOW TABLES */}
-        <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl shadow-xl p-6 mb-6 border-2 border-green-300">
+        {/* RESULT CARD - REDESIGNED */}
+        <div className="bg-white rounded-xl shadow-md p-8 mb-6 border border-slate-200">
           <div className="text-center">
-            <div className="inline-block bg-green-600 text-white px-4 py-2 rounded-full font-bold uppercase tracking-widest text-xs mb-4 shadow-lg">
-              Formula
+            <div className="inline-block bg-slate-800 text-white px-4 py-1.5 rounded-md font-semibold text-xs uppercase tracking-wide mb-6">
+              Calculation
             </div>
-            <div className="text-xl text-slate-700 font-bold mb-3">
+            
+            <h3 className="text-2xl font-bold text-slate-800 mb-6">
               Mean Refractive Index of Acetone
-            </div>
-            <div className="text-lg text-slate-600 font-mono mb-2">
-              μ = (μ from Order 2 + μ from Order 4) / 2
-            </div>
-            {readings && (
-              <>
-                <div className="text-lg text-slate-600 font-mono mb-4">
+            </h3>
+            
+            <div className="bg-slate-50 rounded-lg p-6 mb-6 border border-slate-200">
+              <div className="text-slate-700 font-mono text-lg mb-3">
+                μ = (μ₂ + μ₄) / 2
+              </div>
+              {readings && (
+                <div className="text-slate-600 font-mono text-base">
                   μ = ({readings.order2.mu} + {readings.order4.mu}) / 2
                 </div>
-                <div className="flex items-center justify-center gap-4">
-                  <div className="text-5xl font-black text-indigo-600">μ</div>
-                  <div className="text-5xl font-black text-slate-800">=</div>
-                  <div className="text-6xl font-mono font-black text-slate-900 bg-yellow-100 px-8 py-4 rounded-2xl border-4 border-yellow-300 shadow-lg">
-                    {finalMu}
-                  </div>
-                </div>
-              </>
+              )}
+            </div>
+            
+            {readings && (
+              <div className="flex items-center justify-center gap-3 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-6 border border-blue-200">
+                <span className="text-3xl font-bold text-slate-700">μ =</span>
+                <span className="text-5xl font-black text-slate-900 font-mono tracking-tight">
+                  {finalMu}
+                </span>
+              </div>
             )}
+            
             {!readings && (
-              <div className="text-gray-500 italic text-sm mt-4">
-                Click "GENERATE READINGS" to see the result
+              <div className="text-slate-400 text-sm italic mt-4">
+                Click "GENERATE READINGS" to calculate the result
               </div>
             )}
           </div>
