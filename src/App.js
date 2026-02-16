@@ -7,6 +7,27 @@ export default function NewtonsRingsRefractiveIndex() {
   const [radius, setRadius] = useState(50);
   const [leastCount, setLeastCount] = useState(0.001);
   const [readings, setReadings] = useState(null);
+  const [deviceType, setDeviceType] = useState('Desktop');
+
+  // Device Detection
+  useEffect(() => {
+    const detectDevice = () => {
+      const userAgent = navigator.userAgent.toLowerCase();
+      const isMobile = /iphone|ipad|ipod|android/.test(userAgent);
+      const isTablet = /(ipad|tablet|(android(?!.*mobile))|(windows(?!.*phone)(.*touch))|kindle|playbook|silk|(puffin(?!.*(IP|AP|WP))))/.test(userAgent);
+
+      if (isMobile && !isTablet) {
+        if (/iphone|ipad|ipod/.test(userAgent)) {
+          setDeviceType('iOS');
+        } else {
+          setDeviceType('Android');
+        }
+      } else {
+        setDeviceType('Desktop');
+      }
+    };
+    detectDevice();
+  }, []);
 
   // --- MATH HELPERS ---
   
@@ -144,7 +165,7 @@ export default function NewtonsRingsRefractiveIndex() {
                 <th className="border-r" colSpan={3}>Left Position (a)</th>
                 <th className="border-r" colSpan={3}>Right Position (b)</th>
                 <th className="w-24 border-r bg-orange-50 text-orange-800">D² (cm²)</th>
-                <th className="w-32 bg-purple-50 text-purple-800">Medium New</th>
+                <th className="w-32 bg-purple-50 text-purple-800">Medium μ</th>
               </tr>
               <tr className="bg-white text-slate-400 text-[10px] border-b border-slate-200">
                 <th className="border-r"></th>
@@ -230,17 +251,15 @@ export default function NewtonsRingsRefractiveIndex() {
             </div>
         </div>
 
-        {/* RESULT CARD */}
-        <div className="bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 rounded-2xl p-8 mb-8 flex flex-col items-center justify-center text-center shadow-sm relative overflow-hidden">
-            <div className="absolute top-0 w-full h-1 bg-gradient-to-r from-emerald-400 to-teal-400"></div>
-            <span className="text-emerald-600 font-bold uppercase tracking-widest text-xs mb-2">Calculated Refractive Index</span>
-            <div className="bg-white/80 backdrop-blur-sm px-12 py-4 rounded-2xl border border-emerald-100 shadow-sm">
-                 <span className="text-6xl font-black text-emerald-900 tracking-tighter">μ = {finalMu}</span>
-            </div>
+        {/* DEVICE INFO BADGE */}
+        <div className="flex justify-center mb-4">
+          <div className="inline-block bg-blue-100 text-blue-800 px-4 py-2 rounded-full text-xs font-bold">
+            Device: Desktop
+          </div>
         </div>
 
-        {/* ACTION BUTTON */}
-        <div className="flex justify-center mb-8">
+        {/* ACTION BUTTON - MOVED UP */}
+        <div className="flex justify-center mb-6">
             <button 
                 onClick={generateReadings}
                 className="flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-white px-8 py-3 rounded-xl font-bold transition-all active:scale-95 shadow-lg"
@@ -256,6 +275,40 @@ export default function NewtonsRingsRefractiveIndex() {
                 {renderTable(readings.order4, '4')}
             </>
         )}
+
+        {/* RESULT CARD - MOVED BELOW TABLES */}
+        <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl shadow-xl p-6 mb-6 border-2 border-green-300">
+          <div className="text-center">
+            <div className="inline-block bg-green-600 text-white px-4 py-2 rounded-full font-bold uppercase tracking-widest text-xs mb-4 shadow-lg">
+              Formula
+            </div>
+            <div className="text-xl text-slate-700 font-bold mb-3">
+              Mean Refractive Index of Acetone
+            </div>
+            <div className="text-lg text-slate-600 font-mono mb-2">
+              μ = (μ from Order 2 + μ from Order 4) / 2
+            </div>
+            {readings && (
+              <>
+                <div className="text-lg text-slate-600 font-mono mb-4">
+                  μ = ({readings.order2.mu} + {readings.order4.mu}) / 2
+                </div>
+                <div className="flex items-center justify-center gap-4">
+                  <div className="text-5xl font-black text-indigo-600">μ</div>
+                  <div className="text-5xl font-black text-slate-800">=</div>
+                  <div className="text-6xl font-mono font-black text-slate-900 bg-yellow-100 px-8 py-4 rounded-2xl border-4 border-yellow-300 shadow-lg">
+                    {finalMu}
+                  </div>
+                </div>
+              </>
+            )}
+            {!readings && (
+              <div className="text-gray-500 italic text-sm mt-4">
+                Click "GENERATE READINGS" to see the result
+              </div>
+            )}
+          </div>
+        </div>
 
       </div>
     </div>
