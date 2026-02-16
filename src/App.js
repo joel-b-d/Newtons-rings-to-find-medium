@@ -2,282 +2,192 @@ import React, { useState, useEffect } from 'react';
 import { RefreshCw, Circle } from 'lucide-react';
 
 export default function NewtonsRingsRefractiveIndex() {
-  const [radiusOfCurvature, setRadiusOfCurvature] = useState(50);
-  const LEAST_COUNT = 0.005;
+  // --- STATE ---
+  // Defaults set to 50 and 0.001 as requested
+  const [radius, setRadius] = useState(50);
+  const [leastCount, setLeastCount] = useState(0.001);
+  const [readings, setReadings] = useState(null);
 
-  const wavelengthOptions = {
-    sodium: { name: 'Sodium (Na)', value: 5893, color: 'Yellow' },
-    neon: { name: 'Neon (Ne)', value: 6402, color: 'Red-Orange' },
-    helium: { name: 'Helium (He)', value: 5876, color: 'Yellow' },
-    mercury: { name: 'Mercury (Hg)', value: 5461, color: 'Green' },
-    hydrogen: { name: 'Hydrogen (H)', value: 6563, color: 'Red' }
+  // --- MATH HELPERS ---
+  
+  // Round a value to the nearest Least Count
+  const snapToLC = (val, lc) => {
+    return Math.round(val / lc) * lc;
   };
 
-  const [selectedWavelength, setSelectedWavelength] = useState('sodium');
+  // Convert a raw position into MSR, VSR, and Total
+  const getVernierReadings = (val, lc) => {
+    const MSD = 0.05; // Standard main scale division
+    
+    const msr = Math.floor(val / MSD) * MSD;
+    const remainder = val - msr;
+    let vsr = Math.round(remainder / lc);
+    
+    if (vsr < 0) vsr = 0;
 
-  // Detect device type
-  const [deviceType, setDeviceType] = useState('desktop');
-
-  useEffect(() => {
-    const detectDevice = () => {
-      const userAgent = navigator.userAgent.toLowerCase();
-      const isMobile = /iphone|ipad|ipod|android/.test(userAgent);
-      const isTablet = /(ipad|tablet|(android(?!.*mobile))|(windows(?!.*phone)(.*touch))|kindle|playbook|silk|(puffin(?!.*(IP|AP|WP))))/.test(userAgent);
-
-      if (isMobile && !isTablet) {
-        if (/iphone|ipad|ipod/.test(userAgent)) {
-          setDeviceType('iOS');
-        } else {
-          setDeviceType('Android');
-        }
-      } else {
-        setDeviceType('Desktop');
-      }
+    // formatting total to appropriate decimal places based on LC
+    const decimals = lc.toString().split('.')[1]?.length || 3;
+    const total = (msr + (vsr * lc)).toFixed(decimals);
+    
+    return {
+      msr: msr.toFixed(2),
+      vsr: vsr,
+      total: total
     };
-
-    detectDevice();
-  }, []);
-
-  const [readings, setReadings] = useState({
-    order2: {
-      acetone: {
-        reading_a: { left_msr: '', left_vsr: '', right_msr: '', right_vsr: '' },
-        reading_b: { left_msr: '', left_vsr: '', right_msr: '', right_vsr: '' }
-      },
-      air: {
-        reading_a: { left_msr: '', left_vsr: '', right_msr: '', right_vsr: '' },
-        reading_b: { left_msr: '', left_vsr: '', right_msr: '', right_vsr: '' }
-      }
-    },
-    order4: {
-      acetone: {
-        reading_a: { left_msr: '', left_vsr: '', right_msr: '', right_vsr: '' },
-        reading_b: { left_msr: '', left_vsr: '', right_msr: '', right_vsr: '' }
-      },
-      air: {
-        reading_a: { left_msr: '', left_vsr: '', right_msr: '', right_vsr: '' },
-        reading_b: { left_msr: '', left_vsr: '', right_msr: '', right_vsr: '' }
-      }
-    }
-  });
-
-  const generateRandomReadings = () => {
-    const now = new Date();
-    const seed = (now.getSeconds() * 1000) + (now.getMinutes() * 100) + now.getDate();
-
-    const random = (offset) => {
-      const x = Math.sin(seed + offset) * 10000;
-      return x - Math.floor(x);
-    };
-
-    const generateReading = (medium, order, position, offset) => {
-      let baseDiameter;
-      // PRECISE CALCULATION: For μ = 1.38
-      // We need D²(air)/D²(acetone) = 1.38
-      // So D(air)/D(acetone) = sqrt(1.38) = 1.174734
-      // Targeting: Order 2 = 1.38, Order 4 = 1.38
-      if (medium === 'acetone') {
-        baseDiameter = order === 2 ? 0.3500 : 0.5100; 
-      } else { // air
-        // Air = Acetone × 1.174734
-        baseDiameter = order === 2 ? 0.4112 : 0.5991; 
-      }
-      
-      const variation = (random(offset) - 0.5) * 0.002; // Absolute minimum variation
-      const diameter = baseDiameter + variation;
-      const center = 10.0 + (random(offset + 50) * 2); 
-      const leftTotal = center + (diameter / 2);
-      const rightTotal = center - (diameter / 2);
-      
-      const generateMSRVSR = (total) => {
-        const msr = Math.floor(total * 10) / 10;
-        const remainder = total - msr;
-        const vsr = Math.round(remainder / LEAST_COUNT);
-        return { msr: parseFloat(msr.toFixed(3)), vsr };
-      };
-      
-      const left = generateMSRVSR(leftTotal);
-      const right = generateMSRVSR(rightTotal);
-      
-      return {
-        left_msr: left.msr,
-        left_vsr: left.vsr,
-        right_msr: right.msr,
-        right_vsr: right.vsr
-      };
-    };
-
-    let offset = 0;
-    setReadings({
-      order2: {
-        acetone: {
-          reading_a: generateReading('acetone', 2, 'a', offset++),
-          reading_b: generateReading('acetone', 2, 'b', offset++)
-        },
-        air: {
-          reading_a: generateReading('air', 2, 'a', offset++),
-          reading_b: generateReading('air', 2, 'b', offset++)
-        }
-      },
-      order4: {
-        acetone: {
-          reading_a: generateReading('acetone', 4, 'a', offset++),
-          reading_b: generateReading('acetone', 4, 'b', offset++)
-        },
-        air: {
-          reading_a: generateReading('air', 4, 'a', offset++),
-          reading_b: generateReading('air', 4, 'b', offset++)
-        }
-      }
-    });
   };
 
-  const calculateTotalReading = (msr, vsr) => {
-    if (msr === '' || vsr === '') return '';
-    return (parseFloat(msr) + (parseFloat(vsr) * LEAST_COUNT)).toFixed(5);
-  };
+  // --- GENERATION ALGORITHM ---
+  const generateReadings = () => {
+    const TARGET_MU = 1.382; // Target center value
+    
+    const generateRow = (order) => {
+      let attempts = 0;
+      // Physics baselines
+      const baseDiam = order === 2 ? 0.35 : 0.50;
 
-  const calculateDiameter = (l, r) => {
-    if (!l || !r) return '';
-    return Math.abs(parseFloat(r) - parseFloat(l)).toFixed(5);
-  };
+      while (attempts < 2000) {
+        attempts++;
 
-  const getCalculatedValues = () => {
-    const results = { order2: { acetone: {}, air: {} }, order4: { acetone: {}, air: {} } };
-    ['order2', 'order4'].forEach(order => {
-      ['acetone', 'air'].forEach(medium => {
-        ['reading_a', 'reading_b'].forEach(reading => {
-          const data = readings[order][medium][reading];
-          const leftTotal = calculateTotalReading(data.left_msr, data.left_vsr);
-          const rightTotal = calculateTotalReading(data.right_msr, data.right_vsr);
-          const diameter = calculateDiameter(leftTotal, rightTotal);
-          results[order][medium][reading] = { leftTotal, rightTotal, diameter };
-        });
-      });
-    });
-    return results;
-  };
+        // 1. Generate ACETONE Diameter with noise
+        const dAcetoneRaw = baseDiam + (Math.random() - 0.5) * 0.1;
+        const dAcetone = snapToLC(dAcetoneRaw, leastCount);
 
-  const calc = getCalculatedValues();
+        // 2. Calculate Required AIR Diameter for ~1.38
+        const dAirRaw = dAcetone * Math.sqrt(TARGET_MU);
+        const dAir = snapToLC(dAirRaw, leastCount);
 
-  const getMuForOrder = (order) => {
-    const dAcetoneA = parseFloat(calc[order].acetone.reading_a.diameter);
-    const dAcetoneB = parseFloat(calc[order].acetone.reading_b.diameter);
-    const dAirA = parseFloat(calc[order].air.reading_a.diameter);
-    const dAirB = parseFloat(calc[order].air.reading_b.diameter);
-
-    if (dAcetoneA && dAcetoneB && dAirA && dAirB) {
-      const meanDSqAcetone = (Math.pow(dAcetoneA, 2) + Math.pow(dAcetoneB, 2)) / 2;
-      const meanDSqAir = (Math.pow(dAirA, 2) + Math.pow(dAirB, 2)) / 2;
-      return (meanDSqAir / meanDSqAcetone).toFixed(5);
-    }
-    return null;
-  };
-
-  const mu2 = getMuForOrder('order2');
-  const mu4 = getMuForOrder('order4');
-  const finalMu = (mu2 && mu4) ? ((parseFloat(mu2) + parseFloat(mu4)) / 2).toFixed(5) : null;
-
-  const renderTable = (order, label) => {
-    const dAcetoneA = parseFloat(calc[order].acetone.reading_a.diameter);
-    const dAcetoneB = parseFloat(calc[order].acetone.reading_b.diameter);
-    const dAirA = parseFloat(calc[order].air.reading_a.diameter);
-    const dAirB = parseFloat(calc[order].air.reading_b.diameter);
-
-    let muAcetone = null;
-
-    if (dAcetoneA && dAcetoneB && dAirA && dAirB) {
-      const meanDSqAcetone = (Math.pow(dAcetoneA, 2) + Math.pow(dAcetoneB, 2)) / 2;
-      const meanDSqAir = (Math.pow(dAirA, 2) + Math.pow(dAirB, 2)) / 2;
-      muAcetone = (meanDSqAir / meanDSqAcetone).toFixed(5);
-    }
-
-    // Dn² for each medium (difference between a and b)
-    const dnSquaredAcetone = (dAcetoneA && dAcetoneB) ? 
-      Math.abs(Math.pow(dAcetoneA, 2) - Math.pow(dAcetoneB, 2)).toFixed(6) : '—';
-    const dnSquaredAir = (dAirA && dAirB) ? 
-      Math.abs(Math.pow(dAirA, 2) - Math.pow(dAirB, 2)).toFixed(6) : '—';
-
-    return (
-      <div className="mb-8 bg-white rounded-2xl shadow-xl overflow-hidden border-2 border-gray-200">
-        <div className="bg-gradient-to-r from-slate-800 via-slate-700 to-slate-800 text-white py-4 px-6 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
-              <Circle className="w-6 h-6" />
-            </div>
-            <div>
-              <div className="font-bold text-lg uppercase tracking-wider">Observation Table</div>
-              <div className="text-sm text-slate-300">Order n = {label}</div>
-            </div>
-          </div>
-          <div className="text-3xl font-black opacity-20">n={label}</div>
-        </div>
+        // 3. Validation
+        const calcMu = (dAir * dAir) / (dAcetone * dAcetone);
         
+        // Strict Check: Must start with "1.38"
+        const muString = calcMu.toFixed(5);
+        if (!muString.startsWith("1.38")) continue; 
+
+        // 4. Generate Positions (Drift Check for different MSRs)
+        const centerAcetone = 10.0 + (Math.random() * 0.5);
+        const centerAir = centerAcetone + 0.15 + (Math.random() * 0.1); 
+
+        const acetLeftPos = centerAcetone + (dAcetone / 2);
+        const acetRightPos = centerAcetone - (dAcetone / 2);
+        
+        const airLeftPos = centerAir + (dAir / 2);
+        const airRightPos = centerAir - (dAir / 2);
+
+        // 5. Convert to Vernier format
+        const acetLeft = getVernierReadings(acetLeftPos, leastCount);
+        const acetRight = getVernierReadings(acetRightPos, leastCount);
+        const airLeft = getVernierReadings(airLeftPos, leastCount);
+        const airRight = getVernierReadings(airRightPos, leastCount);
+
+        // 6. "Same MSR" Prevention Check
+        if (acetLeft.msr === airLeft.msr || acetRight.msr === airRight.msr) {
+            continue; 
+        }
+
+        // 7. Calculate D^2 using displayed totals
+        const dAcetDisplay = Math.abs(parseFloat(acetLeft.total) - parseFloat(acetRight.total));
+        const dAirDisplay = Math.abs(parseFloat(airLeft.total) - parseFloat(airRight.total));
+        
+        const dAcetSq = (dAcetDisplay * dAcetDisplay).toFixed(5);
+        const dAirSq = (dAirDisplay * dAirDisplay).toFixed(5);
+        
+        // Final Mu for this row (5 decimals)
+        const finalRowMu = (dAirSq / dAcetSq).toFixed(5);
+
+        return {
+          acetone: { left: acetLeft, right: acetRight, dSq: dAcetSq },
+          air: { left: airLeft, right: airRight, dSq: dAirSq },
+          mu: finalRowMu
+        };
+      }
+      return null;
+    };
+
+    const row2 = generateRow(2);
+    const row4 = generateRow(4);
+
+    if (row2 && row4) {
+      setReadings({ order2: row2, order4: row4 });
+    }
+  };
+
+  // Initial Generation
+  useEffect(() => {
+    generateReadings();
+  }, [leastCount]); 
+
+  // Calculate Final Average Mu (5 decimals)
+  // Assuming the typo "/3" meant "/2" to maintain the mathematical validty of 1.38...
+  const finalMu = readings 
+    ? ((parseFloat(readings.order2.mu) + parseFloat(readings.order4.mu)) / 2).toFixed(5)
+    : "----";
+
+
+  // --- RENDER HELPERS ---
+  const renderTable = (data, nLabel) => {
+    return (
+      <div className="mb-6 bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden">
+        <div className="bg-slate-900 text-white px-5 py-3 flex justify-between items-center">
+          <div className="flex items-center gap-2">
+            <Circle size={16} className="text-blue-400" />
+            <span className="font-bold tracking-wider text-sm">OBSERVATION TABLE</span>
+            <span className="text-slate-400 text-xs">Order n = {nLabel}</span>
+          </div>
+          <span className="font-black text-slate-700/50 text-xl">n={nLabel}</span>
+        </div>
+
         <div className="overflow-x-auto">
-          <table className="w-full text-sm border-collapse">
-            <thead className="bg-gradient-to-b from-gray-100 to-gray-50 text-gray-700">
-              <tr>
-                <th className="border-2 border-gray-300 p-3 font-bold" rowSpan="2">Medium New</th>
-                <th className="border-2 border-gray-300 p-3 font-bold bg-blue-50" colSpan="3">Left Position (cm) - (a)</th>
-                <th className="border-2 border-gray-300 p-3 font-bold bg-purple-50" colSpan="3">Right Position (cm) - (b)</th>
-                <th className="border-2 border-gray-300 p-3 font-bold bg-yellow-50" rowSpan="2">Dn²</th>
-                <th className="border-2 border-gray-300 p-3 font-bold bg-pink-50" rowSpan="2">Medium<br/>μ</th>
+          <table className="w-full text-sm font-mono text-center">
+            <thead>
+              <tr className="bg-slate-50 text-slate-600 border-b border-slate-200 text-xs uppercase font-bold tracking-wider">
+                <th className="p-3 w-32 border-r">Medium</th>
+                <th className="border-r" colSpan={3}>Left Position (a)</th>
+                <th className="border-r" colSpan={3}>Right Position (b)</th>
+                <th className="w-24 border-r bg-orange-50 text-orange-800">D² (cm²)</th>
+                <th className="w-32 bg-purple-50 text-purple-800">Medium New</th>
               </tr>
-              <tr className="text-xs">
-                <th className="border-2 border-gray-300 p-2 bg-blue-50">MSR</th>
-                <th className="border-2 border-gray-300 p-2 bg-blue-50">VSR</th>
-                <th className="border-2 border-gray-300 p-2 bg-blue-100 font-bold">Total</th>
-                <th className="border-2 border-gray-300 p-2 bg-purple-50">MSR</th>
-                <th className="border-2 border-gray-300 p-2 bg-purple-50">VSR</th>
-                <th className="border-2 border-gray-300 p-2 bg-purple-100 font-bold">Total</th>
+              <tr className="bg-white text-slate-400 text-[10px] border-b border-slate-200">
+                <th className="border-r"></th>
+                <th className="p-1 w-16 border-r">MSR</th>
+                <th className="p-1 w-12 border-r">VSR</th>
+                <th className="p-1 w-20 border-r bg-slate-50 font-bold text-slate-700">Total</th>
+                <th className="p-1 w-16 border-r">MSR</th>
+                <th className="p-1 w-12 border-r">VSR</th>
+                <th className="p-1 w-20 border-r bg-slate-50 font-bold text-slate-700">Total</th>
+                <th className="border-r bg-orange-50"></th>
+                <th className="bg-purple-50">Air D² / Acetone D²</th>
               </tr>
             </thead>
-            <tbody>
-              {['acetone', 'air'].map((med, idx) => {
-                const dnSq = med === 'acetone' ? dnSquaredAcetone : dnSquaredAir;
+            <tbody className="text-sm">
+              <tr className="hover:bg-rose-50/50 transition-colors">
+                <td className="p-2 font-bold text-rose-700 border-r border-slate-200 bg-rose-50 text-xs font-sans uppercase">Acetone</td>
+                <td className="border-r border-slate-100">{data.acetone.left.msr}</td>
+                <td className="border-r border-slate-100 text-slate-500">{data.acetone.left.vsr}</td>
+                <td className="border-r border-slate-200 font-bold text-rose-900 bg-rose-50/20">{data.acetone.left.total}</td>
                 
-                return (
-                  <tr key={med} className="hover:bg-gray-50 transition-colors">
-                    <td className={`border-2 border-gray-300 p-3 text-center font-bold uppercase text-sm ${
-                      med === 'air' 
-                        ? 'bg-gradient-to-br from-cyan-50 to-cyan-100 text-cyan-900' 
-                        : 'bg-gradient-to-br from-orange-50 to-orange-100 text-orange-900'
-                    }`}>
-                      {med}
-                    </td>
-                    {/* Left Position (a) */}
-                    <td className="border-2 border-gray-300 p-2 text-center font-mono text-xs">
-                      {readings[order][med].reading_a.left_msr}
-                    </td>
-                    <td className="border-2 border-gray-300 p-2 text-center font-mono text-xs">
-                      {readings[order][med].reading_a.left_vsr}
-                    </td>
-                    <td className="border-2 border-gray-300 p-2 text-center font-mono font-semibold bg-blue-50 text-xs">
-                      {calc[order][med].reading_a.leftTotal}
-                    </td>
-                    {/* Right Position (b) */}
-                    <td className="border-2 border-gray-300 p-2 text-center font-mono text-xs">
-                      {readings[order][med].reading_b.right_msr}
-                    </td>
-                    <td className="border-2 border-gray-300 p-2 text-center font-mono text-xs">
-                      {readings[order][med].reading_b.right_vsr}
-                    </td>
-                    <td className="border-2 border-gray-300 p-2 text-center font-mono font-semibold bg-purple-50 text-xs">
-                      {calc[order][med].reading_b.rightTotal}
-                    </td>
-                    {/* Dn² */}
-                    <td className="border-2 border-gray-300 p-2 text-center font-mono font-black bg-yellow-50 text-xs">
-                      {dnSq}
-                    </td>
-                    {/* Medium μ */}
-                    {idx === 0 && (
-                      <td className="border-2 border-gray-300 p-3 text-center font-mono font-black text-lg bg-gradient-to-br from-pink-50 to-rose-100 text-rose-900" rowSpan="2">
-                        {muAcetone || '—'}
-                      </td>
-                    )}
-                  </tr>
-                );
-              })}
+                <td className="border-r border-slate-100">{data.acetone.right.msr}</td>
+                <td className="border-r border-slate-100 text-slate-500">{data.acetone.right.vsr}</td>
+                <td className="border-r border-slate-200 font-bold text-rose-900 bg-rose-50/20">{data.acetone.right.total}</td>
+                
+                <td className="border-r border-slate-200 font-bold text-orange-700 bg-orange-50/30">{data.acetone.dSq}</td>
+                
+                <td className="font-black text-lg text-purple-700 bg-purple-50 border-l border-slate-200" rowSpan={2}>
+                  {data.mu}
+                </td>
+              </tr>
+
+              <tr className="hover:bg-cyan-50/50 transition-colors border-t border-slate-100">
+                <td className="p-2 font-bold text-cyan-700 border-r border-slate-200 bg-cyan-50 text-xs font-sans uppercase">Air</td>
+                <td className="border-r border-slate-100">{data.air.left.msr}</td>
+                <td className="border-r border-slate-100 text-slate-500">{data.air.left.vsr}</td>
+                <td className="border-r border-slate-200 font-bold text-cyan-900 bg-cyan-50/20">{data.air.left.total}</td>
+                
+                <td className="border-r border-slate-100">{data.air.right.msr}</td>
+                <td className="border-r border-slate-100 text-slate-500">{data.air.right.vsr}</td>
+                <td className="border-r border-slate-200 font-bold text-cyan-900 bg-cyan-50/20">{data.air.right.total}</td>
+                
+                <td className="border-r border-slate-200 font-bold text-orange-700 bg-orange-50/30">{data.air.dSq}</td>
+              </tr>
             </tbody>
           </table>
         </div>
@@ -286,117 +196,67 @@ export default function NewtonsRingsRefractiveIndex() {
   };
 
   return (
-    <div className={`min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-slate-50 ${deviceType === 'Desktop' ? 'p-8' : 'p-4'} font-sans`}>
-      <div className={`${deviceType === 'Desktop' ? 'max-w-7xl' : 'max-w-full'} mx-auto`}>
-        {/* Header Section */}
-        <div className="bg-white rounded-2xl shadow-xl p-4 md:p-8 mb-4 md:mb-8 border-2 border-gray-200">
-          <div className={`flex ${deviceType === 'Desktop' ? 'flex-row justify-between items-center' : 'flex-col gap-4'}`}>
-            <div className="flex items-center gap-4">
-              <div className={`${deviceType === 'Desktop' ? 'w-16 h-16' : 'w-12 h-12'} bg-gradient-to-br from-indigo-600 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg`}>
-                <Circle className={`${deviceType === 'Desktop' ? 'w-10 h-10' : 'w-8 h-8'} text-white`} strokeWidth={2.5} />
-              </div>
-              <div>
-                <h1 className={`${deviceType === 'Desktop' ? 'text-4xl' : 'text-2xl'} font-black text-slate-800 tracking-tight`}>
-                  NEWTON'S RINGS
-                </h1>
-                <p className={`${deviceType === 'Desktop' ? 'text-lg' : 'text-sm'} text-indigo-600 font-bold mt-1`}>
-                  Refractive Index (μ) Determination
-                </p>
-              </div>
+    <div className="min-h-screen bg-slate-50 p-6 font-sans flex flex-col items-center">
+      <div className="w-full max-w-5xl">
+        
+        {/* HEADER & SETTINGS */}
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 mb-6 flex flex-col md:flex-row justify-between items-center gap-6">
+            <div>
+                <h1 className="text-3xl font-black text-slate-800 tracking-tight">NEWTON'S RINGS</h1>
+                <p className="text-slate-500 font-medium">Refractive Index Calculator</p>
             </div>
 
+            <div className="flex gap-4 bg-slate-50 p-3 rounded-xl border border-slate-200">
+                <div className="flex flex-col">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase">Lens Radius (cm)</label>
+                    <input 
+                        type="number" 
+                        value={radius} 
+                        onChange={(e) => setRadius(parseFloat(e.target.value))}
+                        className="w-24 bg-transparent font-bold text-slate-800 border-b border-slate-300 focus:outline-none focus:border-blue-500"
+                    />
+                </div>
+                <div className="w-px bg-slate-200"></div>
+                <div className="flex flex-col">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase">Least Count (cm)</label>
+                    <input 
+                        type="number" 
+                        step="0.001"
+                        value={leastCount} 
+                        onChange={(e) => setLeastCount(parseFloat(e.target.value))}
+                        className="w-24 bg-transparent font-bold text-slate-800 border-b border-slate-300 focus:outline-none focus:border-blue-500"
+                    />
+                </div>
+            </div>
+        </div>
+
+        {/* RESULT CARD */}
+        <div className="bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 rounded-2xl p-8 mb-8 flex flex-col items-center justify-center text-center shadow-sm relative overflow-hidden">
+            <div className="absolute top-0 w-full h-1 bg-gradient-to-r from-emerald-400 to-teal-400"></div>
+            <span className="text-emerald-600 font-bold uppercase tracking-widest text-xs mb-2">Calculated Refractive Index</span>
+            <div className="bg-white/80 backdrop-blur-sm px-12 py-4 rounded-2xl border border-emerald-100 shadow-sm">
+                 <span className="text-6xl font-black text-emerald-900 tracking-tighter">μ = {finalMu}</span>
+            </div>
+        </div>
+
+        {/* ACTION BUTTON */}
+        <div className="flex justify-center mb-8">
             <button 
-              onClick={generateRandomReadings} 
-              className={`flex gap-3 items-center justify-center bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white ${deviceType === 'Desktop' ? 'px-8 py-4' : 'px-6 py-3 w-full'} rounded-xl font-bold shadow-lg hover:shadow-xl transition-all active:scale-95 border-2 border-indigo-700`}
+                onClick={generateReadings}
+                className="flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-white px-8 py-3 rounded-xl font-bold transition-all active:scale-95 shadow-lg"
             >
-              <RefreshCw size={deviceType === 'Desktop' ? 22 : 18} strokeWidth={2.5} />
-              <span className={deviceType === 'Desktop' ? 'text-base' : 'text-sm'}>GENERATE READINGS</span>
+                <RefreshCw size={18} /> GENERATE READINGS
             </button>
-          </div>
-
-          {/* Device Info Badge */}
-          <div className="mt-4 flex justify-center">
-            <div className="inline-block bg-blue-100 text-blue-800 px-4 py-2 rounded-full text-xs font-bold">
-              Device: {deviceType} • Optimized UI
-            </div>
-          </div>
-
-          {/* Info Cards */}
-          <div className={`grid ${deviceType === 'Desktop' ? 'grid-cols-3' : 'grid-cols-1'} gap-4 mt-6 pt-6 border-t-2 border-gray-200`}>
-            <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-xl border-2 border-blue-200">
-              <div className="text-xs font-bold text-blue-700 uppercase mb-2">Radius of Curvature</div>
-              <input
-                type="number"
-                step="0.1"
-                value={radiusOfCurvature}
-                onChange={(e) => setRadiusOfCurvature(parseFloat(e.target.value))}
-                className={`w-full ${deviceType === 'Desktop' ? 'text-2xl' : 'text-xl'} font-black text-blue-900 bg-transparent border-b-2 border-blue-300 focus:outline-none focus:border-blue-500 text-center`}
-              />
-              <div className="text-xs text-blue-600 text-center mt-1">cm</div>
-            </div>
-            <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-4 rounded-xl border-2 border-purple-200">
-              <div className="text-xs font-bold text-purple-700 uppercase mb-1">Least Count (LC)</div>
-              <div className={`${deviceType === 'Desktop' ? 'text-2xl' : 'text-xl'} font-black text-purple-900`}>{LEAST_COUNT} cm</div>
-            </div>
-            <div className="bg-gradient-to-br from-green-50 to-green-100 p-4 rounded-xl border-2 border-green-200">
-              <div className="text-xs font-bold text-green-700 uppercase mb-2">Light Source</div>
-              <select
-                value={selectedWavelength}
-                onChange={(e) => setSelectedWavelength(e.target.value)}
-                className={`w-full ${deviceType === 'Desktop' ? 'text-sm' : 'text-xs'} font-bold text-green-900 bg-transparent border-b-2 border-green-300 focus:outline-none focus:border-green-500 p-1`}
-              >
-                {Object.entries(wavelengthOptions).map(([key, data]) => (
-                  <option key={key} value={key}>
-                    {data.name} - {data.value} Å
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
         </div>
 
-        {/* Equation Display - ALWAYS VISIBLE */}
-        <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl shadow-xl p-6 mb-6 border-2 border-green-300">
-          <div className="text-center">
-            <div className="inline-block bg-green-600 text-white px-4 py-2 rounded-full font-bold uppercase tracking-widest text-xs mb-4 shadow-lg">
-              Formula
-            </div>
-            <div className={`${deviceType === 'Desktop' ? 'text-xl' : 'text-base'} text-slate-700 font-bold mb-3`}>
-              Mean Refractive Index of Acetone
-            </div>
-            <div className={`${deviceType === 'Desktop' ? 'text-lg' : 'text-sm'} text-slate-600 font-mono mb-2`}>
-              μ = (μ from Order 2 + μ from Order 4) / 2
-            </div>
-            {mu2 && mu4 && (
-              <>
-                <div className={`${deviceType === 'Desktop' ? 'text-lg' : 'text-sm'} text-slate-600 font-mono mb-4`}>
-                  μ = ({mu2} + {mu4}) / 2
-                </div>
-                <div className="flex items-center justify-center gap-2 md:gap-4">
-                  <div className={`${deviceType === 'Desktop' ? 'text-5xl' : 'text-3xl'} font-black text-indigo-600`}>μ</div>
-                  <div className={`${deviceType === 'Desktop' ? 'text-5xl' : 'text-3xl'} font-black text-slate-800`}>=</div>
-                  <div className={`${deviceType === 'Desktop' ? 'text-6xl' : 'text-4xl'} font-mono font-black text-slate-900 bg-yellow-100 ${deviceType === 'Desktop' ? 'px-8 py-4' : 'px-4 py-2'} rounded-2xl border-4 border-yellow-300 shadow-lg`}>
-                    {finalMu}
-                  </div>
-                </div>
-              </>
-            )}
-            {!mu2 && (
-              <div className="text-gray-500 italic text-sm mt-4">
-                Click "GENERATE READINGS" to see the result
-              </div>
-            )}
-          </div>
-        </div>
+        {/* TABLES */}
+        {readings && (
+            <>
+                {renderTable(readings.order2, '2')}
+                {renderTable(readings.order4, '4')}
+            </>
+        )}
 
-        {/* Tables */}
-        {renderTable('order2', '2')}
-        {renderTable('order4', '4')}
-
-        {/* Footer Note */}
-        <div className="mt-8 text-center text-xs md:text-sm text-slate-500 italic">
-          Each student receives unique readings based on timestamp • LC = {LEAST_COUNT} cm
-        </div>
       </div>
     </div>
   );
